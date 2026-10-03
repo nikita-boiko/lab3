@@ -1,0 +1,59 @@
+image: python:3.12
+
+stages:
+  - check
+  - test
+  - build
+  - deploy
+
+before_script:
+  - python --version
+  - pip install -r requirements.txt
+
+check:
+  stage: check
+  script:
+    - python -m compileall bus events models services main.py
+
+test:
+  stage: test
+  script:
+    - pytest -v --junitxml=test-results.xml
+  artifacts:
+    when: always
+    reports:
+      junit: test-results.xml
+    paths:
+      - test-results.xml
+    expire_in: 1 week
+
+build:
+  stage: build
+  script:
+    - mkdir -p build
+    - cp -r bus build/
+    - cp -r events build/
+    - cp -r models build/
+    - cp -r services build/
+    - cp -r tests build/
+    - cp main.py build/
+    - cp requirements.txt build/
+    - cp Dockerfile build/
+  artifacts:
+    name: "lab3-build-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - build/
+    expire_in: 1 week
+
+deploy:
+  stage: deploy
+  script:
+    - echo "Публикация артефактов завершена"
+    - echo "Commit: $CI_COMMIT_SHORT_SHA"
+  artifacts:
+    name: "lab3-release-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - build/
+    expire_in: 1 month
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
